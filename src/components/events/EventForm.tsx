@@ -1,0 +1,216 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { useRouter } from "next/navigation";
+import { format } from "date-fns";
+
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/ui/datepicker";
+import { useEvents } from "@/contexts/EventContext";
+import type { Event } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const eventFormSchema = z.object({
+  coupleName: z.string().min(2, {
+    message: "O nome do casal deve ter pelo menos 2 caracteres.",
+  }),
+  eventDate: z.date({
+    required_error: "A data do evento é obrigatória.",
+  }),
+  location: z.string().min(3, {
+    message: "O local do evento deve ter pelo menos 3 caracteres.",
+  }),
+  guestCount: z.coerce.number().int().positive({
+    message: "O número de convidados deve ser positivo.",
+  }),
+  eventValue: z.coerce.number().positive({
+    message: "O valor do evento deve ser positivo.",
+  }),
+  packageName: z.string().min(2, {
+    message: "O nome do pacote deve ter pelo menos 2 caracteres.",
+  }),
+  extraDetails: z.string().optional(),
+});
+
+type EventFormValues = z.infer<typeof eventFormSchema>;
+
+interface EventFormProps {
+  event?: Event; // Optional: for editing existing event
+}
+
+export function EventForm({ event }: EventFormProps) {
+  const router = useRouter();
+  const { addEvent, updateEvent } = useEvents();
+  const { toast } = useToast();
+
+  const defaultValues = event 
+    ? { 
+        ...event, 
+        guestCount: Number(event.guestCount), // Ensure numbers are numbers
+        eventValue: Number(event.eventValue) 
+      } 
+    : {
+        coupleName: "",
+        eventDate: undefined,
+        location: "",
+        guestCount: 0,
+        eventValue: 0,
+        packageName: "",
+        extraDetails: "",
+      };
+
+  const form = useForm<EventFormValues>({
+    resolver: zodResolver(eventFormSchema),
+    defaultValues,
+  });
+
+  function onSubmit(data: EventFormValues) {
+    const formattedData = {
+      ...data,
+      eventDate: format(data.eventDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), // Ensure date is string for context
+    };
+
+    if (event) {
+      updateEvent(event.id, formattedData);
+      toast({
+        title: "Evento Atualizado!",
+        description: `O evento de ${data.coupleName} foi atualizado com sucesso.`,
+      });
+    } else {
+      addEvent(formattedData);
+      toast({
+        title: "Evento Cadastrado!",
+        description: `O evento de ${data.coupleName} foi cadastrado com sucesso.`,
+      });
+    }
+    router.push("/calendar"); // Redirect to calendar or event list page
+  }
+
+  return (
+    <Card className="shadow-xl">
+      <CardHeader>
+        <CardTitle className="text-2xl">{event ? "Editar Evento" : "Cadastrar Novo Evento"}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <div className="grid md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="coupleName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do Casal</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: João & Maria" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="eventDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Data do Evento</FormLabel>
+                    <DatePicker date={field.value} setDate={field.onChange} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Local do Evento</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Salão Festa Linda" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="guestCount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número de Convidados</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Ex: 100" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="eventValue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor do Evento (R$)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="Ex: 5000.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="packageName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Pacote Contratado</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Pacote Completo" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="extraDetails"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Detalhes Extras</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Descreva detalhes adicionais do evento..."
+                      className="resize-y min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+              {event ? "Salvar Alterações" : "Cadastrar Evento"}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
