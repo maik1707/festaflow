@@ -24,9 +24,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 export function EventCalendarView() {
-  const { events, getEventsByMonth, getEventsByDate, deleteEvent } = useEvents();
+  const { events, loading, getEventsByMonth, getEventsByDate, deleteEvent } = useEvents();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -34,9 +36,12 @@ export function EventCalendarView() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<{id: string, name: string} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const monthlyEvents = useMemo(() => getEventsByMonth(currentMonth), [currentMonth, getEventsByMonth]);
-  const dailyEvents = useMemo(() => selectedDate ? getEventsByDate(selectedDate) : [], [selectedDate, getEventsByDate]);
+
+  const monthlyEvents = useMemo(() => getEventsByMonth(currentMonth), [currentMonth, getEventsByMonth, events]); // Added events dependency
+  const dailyEvents = useMemo(() => selectedDate ? getEventsByDate(selectedDate) : [], [selectedDate, getEventsByDate, events]); // Added events dependency
 
   const eventDates = useMemo(() => events.map(event => event.eventDate), [events]);
 
@@ -53,13 +58,31 @@ export function EventCalendarView() {
     router.push(`/events/${eventId}/edit`);
   };
 
-  const handleDeleteEvent = (eventId: string, eventName: string) => {
-    deleteEvent(eventId);
-    toast({
-      title: "Evento Excluído",
-      description: `O evento de ${eventName} foi excluído.`,
-      variant: "destructive",
-    });
+  const confirmDeleteEvent = (eventId: string, eventName: string) => {
+    setEventToDelete({ id: eventId, name: eventName });
+  };
+
+  const executeDeleteEvent = async () => {
+    if (!eventToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteEvent(eventToDelete.id);
+      toast({
+        title: "Evento Excluído",
+        description: `O evento de ${eventToDelete.name} foi excluído.`,
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+      toast({
+        title: "Erro ao Excluir",
+        description: "Não foi possível excluir o evento. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setEventToDelete(null); 
+    }
   };
 
 
@@ -82,123 +105,144 @@ export function EventCalendarView() {
                 <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleEditEvent(event.id); }}>
                     <Edit size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Editar</span>
                 </Button>
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" onClick={(e) => e.stopPropagation()}>
-                            <Trash2 size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Excluir</span>
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                        Esta ação não pode ser desfeita. Isso excluirá permanentemente o evento de {event.coupleName}.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={(e) => {e.stopPropagation(); handleDeleteEvent(event.id, event.coupleName)}}>Excluir</AlertDialogAction>
-                    </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                <Button variant="destructive" size="sm" onClick={(e) => {e.stopPropagation(); confirmDeleteEvent(event.id, event.coupleName)}}>
+                    <Trash2 size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Excluir</span>
+                </Button>
             </div>
         </div>
     </Card>
   );
 
-  return (
-    <div className="grid lg:grid-cols-3 gap-6">
-      <Card className="lg:col-span-2 shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-2xl">Calendário de Eventos</CardTitle>
-          <CardDescription>Selecione uma data para ver os eventos ou clique em um evento na lista.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={handleDateSelect}
-            month={currentMonth}
-            onMonthChange={setCurrentMonth}
-            className="rounded-md border p-0"
-            locale={ptBR}
-            modifiers={{
-              eventDay: eventDates,
-            }}
-            modifiersStyles={{
-              eventDay: {
-                border: "2px solid hsl(var(--primary))",
-                borderRadius: '9999px',
-                color: 'hsl(var(--primary-foreground))',
-                backgroundColor: 'hsl(var(--primary)/0.2)',
-              },
-              selected: {
-                backgroundColor: 'hsl(var(--primary))',
-                color: 'hsl(var(--primary-foreground))',
-              }
-            }}
-            footer={
-              selectedDate && dailyEvents.length > 0 ? (
-                <p className="p-4 text-sm text-center">
-                  {dailyEvents.length} evento(s) em {format(selectedDate, "PPP", { locale: ptBR })}.
-                </p>
-              ) : selectedDate ? (
-                 <p className="p-4 text-sm text-center">Nenhum evento em {format(selectedDate, "PPP", { locale: ptBR })}.</p>
-              ) : (
-                <p className="p-4 text-sm text-center">Selecione um dia para ver os eventos.</p>
-              )
-            }
-          />
-        </CardContent>
-      </Card>
+  if (loading && events.length === 0) { // Show skeleton only on initial load and if no events yet
+    return (
+      <div className="grid lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 shadow-xl">
+          <CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader>
+          <CardContent><Skeleton className="h-[300px] w-full" /></CardContent>
+        </Card>
+        <div className="lg:col-span-1 space-y-6">
+          <Card className="shadow-xl">
+            <CardHeader><Skeleton className="h-6 w-1/2" /></CardHeader>
+            <CardContent className="space-y-3"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
-      <div className="lg:col-span-1 space-y-6">
-        <Card className="shadow-xl">
+  return (
+    <>
+      <div className="grid lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-2xl">Calendário de Eventos</CardTitle>
+            <CardDescription>Selecione uma data para ver os eventos ou clique em um evento na lista.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={handleDateSelect}
+              month={currentMonth}
+              onMonthChange={setCurrentMonth}
+              className="rounded-md border p-0"
+              locale={ptBR}
+              modifiers={{
+                eventDay: eventDates,
+              }}
+              modifiersStyles={{
+                eventDay: {
+                  border: "2px solid hsl(var(--primary))",
+                  borderRadius: '9999px',
+                  color: 'hsl(var(--primary-foreground))',
+                  backgroundColor: 'hsl(var(--primary)/0.2)',
+                },
+                selected: {
+                  backgroundColor: 'hsl(var(--primary))',
+                  color: 'hsl(var(--primary-foreground))',
+                }
+              }}
+              footer={
+                selectedDate && dailyEvents.length > 0 ? (
+                  <p className="p-4 text-sm text-center">
+                    {dailyEvents.length} evento(s) em {format(selectedDate, "PPP", { locale: ptBR })}.
+                  </p>
+                ) : selectedDate ? (
+                  <p className="p-4 text-sm text-center">Nenhum evento em {format(selectedDate, "PPP", { locale: ptBR })}.</p>
+                ) : (
+                  <p className="p-4 text-sm text-center">Selecione um dia para ver os eventos.</p>
+                )
+              }
+            />
+          </CardContent>
+        </Card>
+
+        <div className="lg:col-span-1 space-y-6">
+          <Card className="shadow-xl">
+              <CardHeader>
+                  <CardTitle className="text-xl flex items-center gap-2"><List size={22}/> Eventos do Mês</CardTitle>
+                  <CardDescription>{format(currentMonth, "MMMM yyyy", { locale: ptBR })}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <ScrollArea className="h-[300px] pr-3">
+                  {monthlyEvents.length > 0 ? (
+                      monthlyEvents.map(event => <EventItem key={event.id} event={event} />)
+                  ) : (
+                      <div className="text-center py-8">
+                          <CalendarDays size={48} className="mx-auto text-muted-foreground opacity-50" />
+                          <p className="mt-4 text-muted-foreground">Nenhum evento para este mês.</p>
+                          <Button className="mt-4" onClick={() => router.push('/events/new')}>
+                              <PlusCircle size={18} className="mr-2" /> Adicionar Evento
+                          </Button>
+                      </div>
+                  )}
+                  </ScrollArea>
+              </CardContent>
+          </Card>
+
+          {selectedDate && (
+            <Card className="shadow-xl">
             <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2"><List size={22}/> Eventos do Mês</CardTitle>
-                <CardDescription>{format(currentMonth, "MMMM yyyy", { locale: ptBR })}</CardDescription>
+                <CardTitle className="text-xl">Eventos em {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}</CardTitle>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[300px] pr-3">
-                {monthlyEvents.length > 0 ? (
-                    monthlyEvents.map(event => <EventItem key={event.id} event={event} />)
+                <ScrollArea className="h-[200px] pr-3">
+                {dailyEvents.length > 0 ? (
+                    dailyEvents.map(event => <EventItem key={event.id} event={event} />)
                 ) : (
-                    <div className="text-center py-8">
-                        <CalendarDays size={48} className="mx-auto text-muted-foreground opacity-50" />
-                        <p className="mt-4 text-muted-foreground">Nenhum evento para este mês.</p>
-                        <Button className="mt-4" onClick={() => router.push('/events/new')}>
-                            <PlusCircle size={18} className="mr-2" /> Adicionar Evento
-                        </Button>
-                    </div>
+                    <p className="text-muted-foreground">Nenhum evento para esta data.</p>
                 )}
                 </ScrollArea>
             </CardContent>
-        </Card>
+            </Card>
+          )}
 
-        {selectedDate && (
-           <Card className="shadow-xl">
-           <CardHeader>
-               <CardTitle className="text-xl">Eventos em {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}</CardTitle>
-           </CardHeader>
-           <CardContent>
-               <ScrollArea className="h-[200px] pr-3">
-               {dailyEvents.length > 0 ? (
-                   dailyEvents.map(event => <EventItem key={event.id} event={event} />)
-               ) : (
-                   <p className="text-muted-foreground">Nenhum evento para esta data.</p>
-               )}
-               </ScrollArea>
-           </CardContent>
-           </Card>
-        )}
+        </div>
 
+        <EventDetailsModal
+          event={selectedEvent}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        />
       </div>
-
-      <EventDetailsModal
-        event={selectedEvent}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
-    </div>
+      {eventToDelete && (
+        <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. Isso excluirá permanentemente o evento de {eventToDelete.name}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setEventToDelete(null)} disabled={isDeleting}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={executeDeleteEvent} disabled={isDeleting}>
+                {isDeleting ? "Excluindo..." : "Excluir"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </>
   );
 }

@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 interface EventDetailsModalProps {
   event: Event | null;
@@ -39,20 +40,35 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
   const { deleteEvent } = useEvents();
   const { toast } = useToast();
   const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!event) return null;
 
-  const handleDelete = () => {
-    deleteEvent(event.id);
-    toast({
-      title: "Evento Excluído",
-      description: `O evento de ${event.coupleName} foi excluído.`,
-      variant: "destructive",
-    });
-    onClose();
+  const handleDelete = async () => {
+    if (!event) return;
+    setIsDeleting(true);
+    try {
+      await deleteEvent(event.id);
+      toast({
+        title: "Evento Excluído",
+        description: `O evento de ${event.coupleName} foi excluído.`,
+        variant: "destructive",
+      });
+      onClose();
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+      toast({
+        title: "Erro ao Excluir",
+        description: "Não foi possível excluir o evento. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleEdit = () => {
+    if (!event) return;
     router.push(`/events/${event.id}/edit`);
     onClose();
   };
@@ -120,8 +136,8 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
         <DialogFooter className="sm:justify-between gap-2">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full sm:w-auto">
-                <Trash2 className="mr-2 h-4 w-4" /> Excluir
+              <Button variant="destructive" className="w-full sm:w-auto" disabled={isDeleting}>
+                <Trash2 className="mr-2 h-4 w-4" /> {isDeleting ? "Excluindo..." : "Excluir"}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -132,14 +148,16 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
+                <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+                  {isDeleting ? "Excluindo..." : "Excluir"}
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           <div className="flex gap-2 flex-col sm:flex-row">
-            <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">Fechar</Button>
-            <Button onClick={handleEdit} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button variant="outline" onClick={onClose} className="w-full sm:w-auto" disabled={isDeleting}>Fechar</Button>
+            <Button onClick={handleEdit} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isDeleting}>
               <Pencil className="mr-2 h-4 w-4" /> Editar
             </Button>
           </div>

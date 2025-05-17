@@ -23,6 +23,7 @@ import { useEvents } from "@/contexts/EventContext";
 import type { Event } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
 
 const eventFormSchema = z.object({
   coupleName: z.string().min(2, {
@@ -56,11 +57,12 @@ export function EventForm({ event }: EventFormProps) {
   const router = useRouter();
   const { addEvent, updateEvent } = useEvents();
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const defaultValues = event 
     ? { 
         ...event, 
-        guestCount: Number(event.guestCount), // Ensure numbers are numbers
+        guestCount: Number(event.guestCount), 
         eventValue: Number(event.eventValue) 
       } 
     : {
@@ -78,26 +80,43 @@ export function EventForm({ event }: EventFormProps) {
     defaultValues,
   });
 
-  function onSubmit(data: EventFormValues) {
+  async function onSubmit(data: EventFormValues) {
+    setIsSubmitting(true);
     const formattedData = {
       ...data,
-      eventDate: format(data.eventDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), // Ensure date is string for context
+      // The eventDate from react-hook-form is already a Date object.
+      // The addEvent/updateEvent context functions expect a string initially for newEventData,
+      // but handle Date objects internally.
+      // For `updateEvent`, if `eventDate` is part of `data`, it will be a Date object.
+      // The context function will handle new Date(string) or Date object correctly.
+      eventDate: format(data.eventDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
     };
 
-    if (event) {
-      updateEvent(event.id, formattedData);
+    try {
+      if (event) {
+        await updateEvent(event.id, formattedData);
+        toast({
+          title: "Evento Atualizado!",
+          description: `O evento de ${data.coupleName} foi atualizado com sucesso.`,
+        });
+      } else {
+        await addEvent(formattedData);
+        toast({
+          title: "Evento Cadastrado!",
+          description: `O evento de ${data.coupleName} foi cadastrado com sucesso.`,
+        });
+      }
+      router.push("/calendar"); 
+    } catch (error) {
+      console.error("Failed to save event:", error);
       toast({
-        title: "Evento Atualizado!",
-        description: `O evento de ${data.coupleName} foi atualizado com sucesso.`,
+        title: "Erro ao Salvar",
+        description: "Não foi possível salvar o evento. Tente novamente.",
+        variant: "destructive",
       });
-    } else {
-      addEvent(formattedData);
-      toast({
-        title: "Evento Cadastrado!",
-        description: `O evento de ${data.coupleName} foi cadastrado com sucesso.`,
-      });
+    } finally {
+      setIsSubmitting(false);
     }
-    router.push("/calendar"); // Redirect to calendar or event list page
   }
 
   return (
@@ -116,7 +135,7 @@ export function EventForm({ event }: EventFormProps) {
                   <FormItem>
                     <FormLabel>Nome do Casal</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: João & Maria" {...field} />
+                      <Input placeholder="Ex: João & Maria" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -141,7 +160,7 @@ export function EventForm({ event }: EventFormProps) {
                 <FormItem>
                   <FormLabel>Local do Evento</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Salão Festa Linda" {...field} />
+                    <Input placeholder="Ex: Salão Festa Linda" {...field} disabled={isSubmitting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -155,7 +174,7 @@ export function EventForm({ event }: EventFormProps) {
                   <FormItem>
                     <FormLabel>Número de Convidados</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Ex: 100" {...field} />
+                      <Input type="number" placeholder="Ex: 100" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -168,7 +187,7 @@ export function EventForm({ event }: EventFormProps) {
                   <FormItem>
                     <FormLabel>Valor do Evento (R$)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="Ex: 5000.00" {...field} />
+                      <Input type="number" step="0.01" placeholder="Ex: 5000.00" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -182,7 +201,7 @@ export function EventForm({ event }: EventFormProps) {
                 <FormItem>
                   <FormLabel>Pacote Contratado</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Pacote Completo" {...field} />
+                    <Input placeholder="Ex: Pacote Completo" {...field} disabled={isSubmitting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -199,14 +218,15 @@ export function EventForm({ event }: EventFormProps) {
                       placeholder="Descreva detalhes adicionais do evento..."
                       className="resize-y min-h-[100px]"
                       {...field}
+                      disabled={isSubmitting}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
-              {event ? "Salvar Alterações" : "Cadastrar Evento"}
+            <Button type="submit" className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting}>
+              {isSubmitting ? (event ? "Salvando..." : "Cadastrando...") : (event ? "Salvar Alterações" : "Cadastrar Evento")}
             </Button>
           </form>
         </Form>

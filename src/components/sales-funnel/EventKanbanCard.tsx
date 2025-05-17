@@ -10,6 +10,7 @@ import { ChevronDown, Calendar, Users, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 interface EventKanbanCardProps {
   event: Event;
@@ -18,13 +19,27 @@ interface EventKanbanCardProps {
 export function EventKanbanCard({ event }: EventKanbanCardProps) {
   const { updateEvent } = useEvents();
   const { toast } = useToast();
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleChangeStatus = (newStatus: EventStatus) => {
-    updateEvent(event.id, { status: newStatus });
-    toast({
-      title: "Status Atualizado",
-      description: `O evento de ${event.coupleName} foi movido para ${newStatus}.`,
-    });
+  const handleChangeStatus = async (newStatus: EventStatus) => {
+    if (newStatus === event.status) return;
+    setIsUpdating(true);
+    try {
+      await updateEvent(event.id, { status: newStatus });
+      toast({
+        title: "Status Atualizado",
+        description: `O evento de ${event.coupleName} foi movido para ${newStatus}.`,
+      });
+    } catch (error) {
+      console.error("Failed to update event status:", error);
+      toast({
+        title: "Erro ao Atualizar",
+        description: "Não foi possível atualizar o status do evento. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -42,8 +57,8 @@ export function EventKanbanCard({ event }: EventKanbanCardProps) {
         <div className="mt-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="w-full">
-                Mover para: {event.status} <ChevronDown size={16} className="ml-2" />
+              <Button variant="outline" size="sm" className="w-full" disabled={isUpdating}>
+                {isUpdating ? "Movendo..." : `Mover para: ${event.status}`} <ChevronDown size={16} className="ml-2" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -51,7 +66,7 @@ export function EventKanbanCard({ event }: EventKanbanCardProps) {
                 <DropdownMenuItem
                   key={status}
                   onClick={() => handleChangeStatus(status)}
-                  disabled={status === event.status}
+                  disabled={status === event.status || isUpdating}
                 >
                   {status}
                 </DropdownMenuItem>
