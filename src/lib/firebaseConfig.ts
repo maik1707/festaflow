@@ -7,12 +7,12 @@ import { getFirestore, type Firestore } from "firebase/firestore";
 // Your web app's Firebase configuration
 // TODO: PASTE YOUR FIREBASE CONFIGURATION HERE
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAkU0E0YDkKRqwP5G8ycQm7lpjPL35dcoE",
+  authDomain: "eventos-cadastro.firebaseapp.com",
+  projectId: "eventos-cadastro",
+  storageBucket: "eventos-cadastro.firebasestorage.app",
+  messagingSenderId: "652299015829",
+  appId: "1:652299015829:web:a2dc73d0006333184bed9c"
 };
 
 // Initialize Firebase
