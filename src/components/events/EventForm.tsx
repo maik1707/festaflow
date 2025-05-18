@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,7 +24,10 @@ import { useEvents } from "@/contexts/EventContext";
 import type { Event } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Sparkles } from "lucide-react";
+import { suggestEventDetails } from "@/ai/flows/suggest-event-details-flow";
+import type { SuggestEventDetailsInput } from "@/ai/flows/suggest-event-details-flow";
 
 const eventFormSchema = z.object({
   coupleName: z.string().min(2, {
@@ -58,6 +62,8 @@ export function EventForm({ event }: EventFormProps) {
   const { addEvent, updateEvent } = useEvents();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAiSuggesting, setIsAiSuggesting] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
 
   const defaultValues = event 
     ? { 
@@ -80,15 +86,18 @@ export function EventForm({ event }: EventFormProps) {
     defaultValues,
   });
 
+  // Watch for changes in packageName or coupleName to clear AI suggestions
+  const watchedPackageName = form.watch("packageName");
+  const watchedCoupleName = form.watch("coupleName");
+
+  useEffect(() => {
+    setAiSuggestions([]);
+  }, [watchedPackageName, watchedCoupleName]);
+
   async function onSubmit(data: EventFormValues) {
     setIsSubmitting(true);
     const formattedData = {
       ...data,
-      // The eventDate from react-hook-form is already a Date object.
-      // The addEvent/updateEvent context functions expect a string initially for newEventData,
-      // but handle Date objects internally.
-      // For `updateEvent`, if `eventDate` is part of `data`, it will be a Date object.
-      // The context function will handle new Date(string) or Date object correctly.
       eventDate: format(data.eventDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
     };
 
@@ -119,6 +128,47 @@ export function EventForm({ event }: EventFormProps) {
     }
   }
 
+  const handleAiSuggest = async () => {
+    setIsAiSuggesting(true);
+    setAiSuggestions([]);
+    const currentPackageName = form.getValues("packageName");
+    const currentCoupleName = form.getValues("coupleName");
+
+    if (!currentPackageName && !currentCoupleName) {
+        toast({
+            title: "Contexto Insuficiente",
+            description: "Por favor, preencha o nome do pacote ou do casal para obter sugestões.",
+            variant: "destructive"
+        });
+        setIsAiSuggesting(false);
+        return;
+    }
+
+    try {
+      const input: SuggestEventDetailsInput = {
+        packageName: currentPackageName || "Não especificado",
+        coupleName: currentCoupleName || "Cliente",
+      };
+      const result = await suggestEventDetails(input);
+      setAiSuggestions(result.suggestions);
+    } catch (error) {
+      console.error("Error fetching AI suggestions:", error);
+      toast({
+        title: "Erro na Sugestão",
+        description: "Não foi possível buscar sugestões da IA. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAiSuggesting(false);
+    }
+  };
+
+  const appendSuggestionToDetails = (suggestion: string) => {
+    const currentDetails = form.getValues("extraDetails") || "";
+    const newDetails = currentDetails ? `${currentDetails}\n- ${suggestion}` : `- ${suggestion}`;
+    form.setValue("extraDetails", newDetails, { shouldValidate: true });
+  };
+
   return (
     <Card className="shadow-xl">
       <CardHeader>
@@ -135,7 +185,7 @@ export function EventForm({ event }: EventFormProps) {
                   <FormItem>
                     <FormLabel>Nome do Casal</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: João & Maria" {...field} disabled={isSubmitting} />
+                      <Input placeholder="Ex: João & Maria" {...field} disabled={isSubmitting || isAiSuggesting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -160,7 +210,7 @@ export function EventForm({ event }: EventFormProps) {
                 <FormItem>
                   <FormLabel>Local do Evento</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Salão Festa Linda" {...field} disabled={isSubmitting} />
+                    <Input placeholder="Ex: Salão Festa Linda" {...field} disabled={isSubmitting || isAiSuggesting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -174,7 +224,7 @@ export function EventForm({ event }: EventFormProps) {
                   <FormItem>
                     <FormLabel>Número de Convidados</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Ex: 100" {...field} disabled={isSubmitting} />
+                      <Input type="number" placeholder="Ex: 100" {...field} disabled={isSubmitting || isAiSuggesting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -187,7 +237,7 @@ export function EventForm({ event }: EventFormProps) {
                   <FormItem>
                     <FormLabel>Valor do Evento (R$)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="Ex: 5000.00" {...field} disabled={isSubmitting} />
+                      <Input type="number" step="0.01" placeholder="Ex: 5000.00" {...field} disabled={isSubmitting || isAiSuggesting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -201,7 +251,7 @@ export function EventForm({ event }: EventFormProps) {
                 <FormItem>
                   <FormLabel>Pacote Contratado</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Pacote Completo" {...field} disabled={isSubmitting} />
+                    <Input placeholder="Ex: Pacote Completo" {...field} disabled={isSubmitting || isAiSuggesting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -212,20 +262,53 @@ export function EventForm({ event }: EventFormProps) {
               name="extraDetails"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Detalhes Extras</FormLabel>
+                  <div className="flex justify-between items-center mb-1">
+                    <FormLabel>Detalhes Extras</FormLabel>
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleAiSuggest} 
+                        disabled={isAiSuggesting || isSubmitting || (!form.getValues("packageName") && !form.getValues("coupleName"))}
+                    >
+                        <Sparkles className="mr-2 h-4 w-4" /> 
+                        {isAiSuggesting ? "Sugerindo..." : "Sugerir com IA"}
+                    </Button>
+                  </div>
                   <FormControl>
                     <Textarea
                       placeholder="Descreva detalhes adicionais do evento..."
                       className="resize-y min-h-[100px]"
                       {...field}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || isAiSuggesting}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting}>
+
+            {aiSuggestions.length > 0 && (
+                <Card className="p-4 bg-muted/50">
+                    <CardDescription className="mb-2 text-sm">Sugestões da IA (clique para adicionar):</CardDescription>
+                    <div className="flex flex-wrap gap-2">
+                        {aiSuggestions.map((suggestion, index) => (
+                            <Button 
+                                key={index} 
+                                type="button" 
+                                variant="secondary" 
+                                size="sm" 
+                                onClick={() => appendSuggestionToDetails(suggestion)}
+                                className="bg-accent text-accent-foreground hover:bg-accent/90"
+                            >
+                                {suggestion}
+                            </Button>
+                        ))}
+                    </div>
+                </Card>
+            )}
+            
+            <Button type="submit" className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting || isAiSuggesting}>
               {isSubmitting ? (event ? "Salvando..." : "Cadastrando...") : (event ? "Salvar Alterações" : "Cadastrar Evento")}
             </Button>
           </form>
@@ -234,3 +317,4 @@ export function EventForm({ event }: EventFormProps) {
     </Card>
   );
 }
+

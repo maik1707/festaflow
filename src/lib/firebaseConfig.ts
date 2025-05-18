@@ -29,5 +29,5 @@ export { app, db };
 
 // Example of how to check if config is placeholder:
 export const isFirebaseConfigured = () => {
-    return firebaseConfig.apiKey !== "YOUR_API_KEY";
-}
+  return firebaseConfig.apiKey !== "652299015829";
+  }
