@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -29,30 +30,30 @@ interface EventContextType {
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
 
-const generateId = () => Math.random().toString(36).substr(2, 9); // Used for localStorage fallback
+const generateId = () => Math.random().toString(36).substr(2, 9); 
 
-const initialEventsData: Event[] = [ // Used if localStorage is empty and Firebase not configured
+const initialEventsData: Event[] = [
   {
     id: generateId(),
-    coupleName: "Ana & Bruno (Exemplo)",
+    coupleName: "Ana & Bruno (Exemplo Evento)",
     eventDate: new Date(new Date().getFullYear(), new Date().getMonth(), 15, 18, 0),
     location: "Salão Sol e Lua",
     guestCount: 150,
     eventValue: 12000,
     packageName: "Pacote Diamante",
     extraDetails: "Decoração floral branca e rosa. DJ incluso.",
-    status: "Confirmado",
+    status: "Confirmado", // Default status for example events
   },
   {
     id: generateId(),
-    coupleName: "Carlos & Diana (Exemplo)",
+    coupleName: "Carlos & Diana (Exemplo Evento)",
     eventDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5, 16, 30),
     location: "Chácara Recanto Verde",
     guestCount: 80,
     eventValue: 7500,
     packageName: "Pacote Ouro",
     extraDetails: "Cerimônia ao ar livre. Banda ao vivo.",
-    status: "Proposta Enviada",
+    status: "Confirmado", // Default status for example events
   },
 ];
 
@@ -73,17 +74,16 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
             return {
               id: doc.id,
               ...data,
-              eventDate: (data.eventDate as Timestamp).toDate(), // Convert Firestore Timestamp to JS Date
+              eventDate: (data.eventDate as Timestamp).toDate(),
             } as Event;
           });
           setEvents(fetchedEvents);
         } catch (error) {
           console.error("Error fetching events from Firestore: ", error);
-          // Fallback to localStorage if Firestore fails
           loadEventsFromLocalStorage();
         }
       } else {
-        console.warn("Firebase não configurado. Usando localStorage.");
+        console.warn("Firebase não configurado para eventos. Usando localStorage.");
         loadEventsFromLocalStorage();
       }
       setLoading(false);
@@ -98,7 +98,7 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
         }) : initialEventsData;
         setEvents(parsedEvents);
       } else {
-        setEvents(initialEventsData); // Fallback for server-side rendering or environments without localStorage
+        setEvents(initialEventsData); 
       }
     };
     
@@ -107,7 +107,7 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !loading) { 
-        if (!isFirebaseConfigured()) { // Only save to localStorage if Firebase is not set up
+        if (!isFirebaseConfigured()) { 
            localStorage.setItem('festaFlowEvents', JSON.stringify(events));
         }
     }
@@ -116,8 +116,8 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
   const addEvent = async (newEventData: Omit<Event, 'id' | 'status' | 'eventDate'> & { eventDate: string }): Promise<void> => {
     const newEventObjectModel: Event = {
       ...newEventData,
-      id: generateId(), // Placeholder ID, Firestore will generate its own
-      status: 'Lead',
+      id: generateId(), 
+      status: 'Confirmado', // Default status for a new event is now 'Confirmado'
       eventDate: new Date(newEventData.eventDate),
       guestCount: Number(newEventData.guestCount),
       eventValue: Number(newEventData.eventValue),
@@ -125,10 +125,9 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
 
     if (isFirebaseConfigured()) {
       try {
-        // Firestore will generate ID for addDoc, so we don't pass newEventObjectModel.id
         const docRef = await addDoc(collection(db, "events"), {
           coupleName: newEventObjectModel.coupleName,
-          eventDate: Timestamp.fromDate(newEventObjectModel.eventDate), // Store as Firestore Timestamp
+          eventDate: Timestamp.fromDate(newEventObjectModel.eventDate),
           location: newEventObjectModel.location,
           guestCount: newEventObjectModel.guestCount,
           eventValue: newEventObjectModel.eventValue,
@@ -160,7 +159,6 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
         if (updates.eventValue !== undefined) {
            firestoreUpdates.eventValue = Number(updates.eventValue);
         }
-        // Remove id from updates object if it exists, as it's the doc identifier
         if ('id' in firestoreUpdates) {
             delete firestoreUpdates.id;
         }

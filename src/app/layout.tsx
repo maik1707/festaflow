@@ -1,12 +1,9 @@
+
 import type { Metadata } from 'next';
-// Removed: import { GeistSans } from 'geist/font/sans';
-// Removed: import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { EventProvider } from '@/contexts/EventContext';
-
-// Removed: const geistSans = GeistSans;
-// Removed: const geistMono = GeistMono;
+import { ProspectProvider } from '@/contexts/ProspectContext'; // Import ProspectProvider
 
 export const metadata: Metadata = {
   title: 'FestaFlow - Gestão de Eventos',
@@ -20,10 +17,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`antialiased font-sans`}> {/* Removed geistSans.variable and geistMono.variable */}
+      <body className={`antialiased font-sans`}>
         <EventProvider>
-          {children}
-          <Toaster />
+          <ProspectProvider> {/* Wrap with ProspectProvider */}
+            {children}
+            <Toaster />
+          </ProspectProvider>
         </EventProvider>
       </body>
     </html>

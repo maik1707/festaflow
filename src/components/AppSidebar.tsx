@@ -1,17 +1,19 @@
+
 "use client";
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarDays, Users, ClipboardList, CircleDollarSign, Settings, LayoutDashboard } from 'lucide-react';
+import { CalendarDays, Users, ClipboardList, CircleDollarSign, LayoutDashboard, CalendarPlus, UserPlus } from 'lucide-react'; // Added CalendarPlus, UserPlus
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/calendar', label: 'Calendário', icon: CalendarDays },
-  { href: '/events/new', label: 'Novo Evento', icon: Users }, // Using Users icon as placeholder for "couple"
-  { href: '/sales-funnel', label: 'Funil de Vendas', icon: ClipboardList },
+  { href: '/calendar', label: 'Calendário Eventos', icon: CalendarDays },
+  { href: '/events/new', label: 'Novo Evento', icon: CalendarPlus }, // Changed icon
+  { href: '/prospects/new', label: 'Novo Lead', icon: UserPlus }, // Added Novo Lead
+  { href: '/sales-funnel', label: 'Funil de Leads', icon: ClipboardList }, // Renamed
   { href: '/financials', label: 'Financeiro', icon: CircleDollarSign },
 ];
 
