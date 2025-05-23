@@ -25,6 +25,9 @@ import type { Event } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 const eventFormSchema = z.object({
   coupleName: z.string().min(2, {
@@ -46,6 +49,8 @@ const eventFormSchema = z.object({
     message: "O nome do pacote deve ter pelo menos 2 caracteres.",
   }),
   extraDetails: z.string().optional(),
+  // amountPaid não é editável aqui, mas precisa estar no schema se for parte do defaultValues
+  amountPaid: z.number().optional(), 
 });
 
 type EventFormValues = z.infer<typeof eventFormSchema>;
@@ -64,7 +69,8 @@ export function EventForm({ event }: EventFormProps) {
     ? { 
         ...event, 
         guestCount: Number(event.guestCount), 
-        eventValue: Number(event.eventValue) 
+        eventValue: Number(event.eventValue),
+        amountPaid: Number(event.amountPaid || 0) // Garante que seja número
       } 
     : {
         coupleName: "",
@@ -74,28 +80,46 @@ export function EventForm({ event }: EventFormProps) {
         eventValue: 0,
         packageName: "",
         extraDetails: "",
+        amountPaid: 0,
       };
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
     defaultValues,
   });
+  
+  // Se for um evento existente, atualiza o valor de amountPaid no formulário
+  // caso ele mude no contexto (ex: após um novo pagamento ser adicionado).
+  useEffect(() => {
+    if (event) {
+      form.setValue('amountPaid', Number(event.amountPaid || 0));
+    }
+  }, [event, form]);
+
 
   async function onSubmit(data: EventFormValues) {
     setIsSubmitting(true);
+    // Não incluímos amountPaid nos dados a serem enviados para addEvent/updateEvent via formulário,
+    // pois ele é gerenciado pelo PaymentContext.
+    // No entanto, a função updateEvent no EventContext PODE receber amountPaid.
+    const { amountPaid, ...eventDataToSubmit } = data;
+    
     const formattedData = {
-      ...data,
+      ...eventDataToSubmit,
       eventDate: format(data.eventDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
     };
 
     try {
       if (event) {
+        // Ao atualizar, não passamos amountPaid diretamente do formulário.
+        // Ele é atualizado via PaymentContext -> EventContext.updateEvent
         await updateEvent(event.id, formattedData);
         toast({
           title: "Evento Atualizado!",
           description: `O evento de ${data.coupleName} foi atualizado com sucesso.`,
         });
       } else {
+        // addEvent no EventContext já inicializa amountPaid como 0.
         await addEvent(formattedData);
         toast({
           title: "Evento Cadastrado!",
@@ -114,6 +138,10 @@ export function EventForm({ event }: EventFormProps) {
       setIsSubmitting(false);
     }
   }
+
+  const currentAmountPaid = form.watch('amountPaid') || 0;
+  const eventValue = form.watch('eventValue') || 0;
+  const remainingBalance = eventValue - currentAmountPaid;
 
   return (
     <Card className="shadow-xl">
@@ -162,7 +190,7 @@ export function EventForm({ event }: EventFormProps) {
                 </FormItem>
               )}
             />
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <FormField
                 control={form.control}
                 name="guestCount"
@@ -181,7 +209,7 @@ export function EventForm({ event }: EventFormProps) {
                 name="eventValue"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor do Evento (R$)</FormLabel>
+                    <FormLabel>Valor Total do Evento (R$)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="Ex: 5000.00" {...field} disabled={isSubmitting} />
                     </FormControl>
@@ -189,7 +217,33 @@ export function EventForm({ event }: EventFormProps) {
                   </FormItem>
                 )}
               />
+               <FormItem>
+                <FormLabel>Valor Pago (R$)</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    value={currentAmountPaid.toFixed(2)} 
+                    readOnly 
+                    className="bg-muted cursor-not-allowed"
+                  />
+                </FormControl>
+                 <FormDescription>
+                    Saldo Devedor: R$ {remainingBalance.toFixed(2)}
+                </FormDescription>
+              </FormItem>
             </div>
+
+            {currentAmountPaid > eventValue && eventValue > 0 && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Atenção!</AlertTitle>
+                    <AlertDescription>
+                    O valor pago (R$ {currentAmountPaid.toFixed(2)}) é maior que o valor total do evento (R$ {eventValue.toFixed(2)}).
+                    </AlertDescription>
+                </Alert>
+            )}
+
+
             <FormField
               control={form.control}
               name="packageName"

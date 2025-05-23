@@ -21,7 +21,7 @@ import {
 interface EventContextType {
   events: Event[];
   loading: boolean;
-  addEvent: (newEventData: Omit<Event, 'id' | 'status' | 'eventDate'> & { eventDate: string }) => Promise<void>;
+  addEvent: (newEventData: Omit<Event, 'id' | 'status' | 'eventDate' | 'amountPaid'> & { eventDate: string }) => Promise<string | undefined>;
   updateEvent: (id: string, updates: Partial<Omit<Event, 'id' | 'eventDate'> & { eventDate?: string }>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
   getEventById: (id: string) => Event | undefined;
@@ -31,51 +31,35 @@ interface EventContextType {
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
 
-const generateId = () => Math.random().toString(36).substr(2, 9); // Only for non-Firebase fallback (which we are removing)
-
-// Initial sample data can be used if Firebase is not configured, for UI demonstration.
-// However, for an "official application", operations should fail or be disabled.
-const initialEventsData: Event[] = [
-  // {
-  //   id: generateId(),
-  //   coupleName: "Ana & Bruno (Exemplo Evento)",
-  //   eventDate: new Date(new Date().getFullYear(), new Date().getMonth(), 15, 18, 0),
-  //   location: "Salão Sol e Lua",
-  //   guestCount: 150,
-  //   eventValue: 12000,
-  //   packageName: "Pacote Diamante",
-  //   extraDetails: "Decoração floral branca e rosa. DJ incluso.",
-  //   status: "Confirmado",
-  // },
-];
-
 export const EventProvider = ({ children }: { children: ReactNode }) => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    if (isFirebaseConfigured() && db) {
-      try {
-        const eventsCollection = collection(db, "events");
-        const q = query(eventsCollection, orderBy("eventDate", "asc"));
-        const querySnapshot = await getDocs(q);
-        const fetchedEvents = querySnapshot.docs.map(docSnapshot => { // Renamed doc to docSnapshot to avoid conflict
-          const data = docSnapshot.data();
-          return {
-            id: docSnapshot.id,
-            ...data,
-            eventDate: (data.eventDate as Timestamp).toDate(),
-          } as Event;
-        });
-        setEvents(fetchedEvents);
-      } catch (error) {
-        console.error("Error fetching events from Firestore: ", error);
-        setEvents(initialEventsData); // Or set to [] and show an error message in UI
-      }
-    } else {
-      console.warn("Firebase não configurado para eventos. Os dados não serão carregados ou persistidos no banco de dados.");
-      setEvents(initialEventsData); // Set to empty or sample data if Firebase not configured
+    if (!isFirebaseConfigured() || !db) {
+      console.warn("Firebase não configurado para eventos. Os dados não serão carregados ou persistidos. Certifique-se de que as variáveis de ambiente do Firebase estão configuradas.");
+      setEvents([]); // Carrega lista vazia se Firebase não configurado
+      setLoading(false);
+      return;
+    }
+    try {
+      const eventsCollection = collection(db, "events");
+      const q = query(eventsCollection, orderBy("eventDate", "asc"));
+      const querySnapshot = await getDocs(q);
+      const fetchedEvents = querySnapshot.docs.map(docSnapshot => {
+        const data = docSnapshot.data();
+        return {
+          id: docSnapshot.id,
+          ...data,
+          eventDate: (data.eventDate as Timestamp).toDate(),
+          amountPaid: data.amountPaid || 0, // Garante que amountPaid exista e seja no mínimo 0
+        } as Event;
+      });
+      setEvents(fetchedEvents);
+    } catch (error) {
+      console.error("Error fetching events from Firestore: ", error);
+      setEvents([]);
     }
     setLoading(false);
   }, []);
@@ -85,37 +69,30 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
   }, [loadData]);
 
 
-  const addEvent = async (newEventData: Omit<Event, 'id' | 'status' | 'eventDate'> & { eventDate: string }): Promise<void> => {
+  const addEvent = async (newEventData: Omit<Event, 'id' | 'status' | 'eventDate' | 'amountPaid'> & { eventDate: string }): Promise<string | undefined> => {
     if (!isFirebaseConfigured() || !db) {
       console.error("Firebase não configurado. Não é possível adicionar evento.");
-      // Optionally throw an error or notify the user via UI
       throw new Error("Firebase não configurado. Operação de adicionar evento falhou.");
     }
 
-    const newEventObjectModel: Omit<Event, 'id'> = { // Firestore will generate ID
+    const newEventObjectModel: Omit<Event, 'id'> = {
       ...newEventData,
       status: 'Confirmado',
       eventDate: new Date(newEventData.eventDate),
       guestCount: Number(newEventData.guestCount),
       eventValue: Number(newEventData.eventValue),
       extraDetails: newEventData.extraDetails || "",
+      amountPaid: 0, // Inicializa amountPaid como 0
     };
 
     try {
-      // Firestore data should not include 'id' when adding, as Firestore generates it.
       const docRef = await addDoc(collection(db, "events"), {
-        coupleName: newEventObjectModel.coupleName,
+        ...newEventObjectModel,
         eventDate: Timestamp.fromDate(newEventObjectModel.eventDate),
-        location: newEventObjectModel.location,
-        guestCount: newEventObjectModel.guestCount,
-        eventValue: newEventObjectModel.eventValue,
-        packageName: newEventObjectModel.packageName,
-        extraDetails: newEventObjectModel.extraDetails,
-        status: newEventObjectModel.status,
-        // createdAt: serverTimestamp(), // Optional: if you want to track creation time
+        createdAt: serverTimestamp(), // Optional: if you want to track creation time
       });
-      // Add to local state with the ID from Firestore
       setEvents(prevEvents => [...prevEvents, {...newEventObjectModel, id: docRef.id}].sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime()));
+      return docRef.id;
     } catch (e) {
       console.error("Error adding document to Firestore: ", e);
       throw e; 
@@ -140,7 +117,10 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
       if (updates.eventValue !== undefined) {
          firestoreUpdates.eventValue = Number(updates.eventValue);
       }
-      // firestoreUpdates.updatedAt = serverTimestamp(); // Optional: track update time
+      if (updates.amountPaid !== undefined) { // Garante que amountPaid seja numérico
+        firestoreUpdates.amountPaid = Number(updates.amountPaid);
+      }
+      firestoreUpdates.updatedAt = serverTimestamp(); // Optional: track update time
 
       await updateDoc(eventDocRef, firestoreUpdates);
       
@@ -151,6 +131,7 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
             if (updates.eventDate) updatedEvent.eventDate = new Date(updates.eventDate);
             if (updates.guestCount !== undefined) updatedEvent.guestCount = Number(updates.guestCount);
             if (updates.eventValue !== undefined) updatedEvent.eventValue = Number(updates.eventValue);
+            if (updates.amountPaid !== undefined) updatedEvent.amountPaid = Number(updates.amountPaid);
             return updatedEvent;
           }
           return event;
@@ -168,6 +149,9 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
       throw new Error("Firebase não configurado. Operação de excluir evento falhou.");
     }
     try {
+      // TODO: Considerar o que fazer com os pagamentos associados a este evento.
+      // Por enquanto, eles permanecerão no banco de dados, mas não serão facilmente acessíveis.
+      // Uma opção seria excluí-los também, ou arquivá-los.
       const eventDocRef = doc(db, "events", id);
       await deleteDoc(eventDocRef);
       setEvents(prevEvents => prevEvents.filter(event => event.id !== id));

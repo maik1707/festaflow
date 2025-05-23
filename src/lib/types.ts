@@ -16,4 +16,5 @@ export interface Event {
   packageName: string;
   extraDetails?: string;
   status: EventStatus;
+  amountPaid: number; // Novo campo para rastrear o valor pago
 }

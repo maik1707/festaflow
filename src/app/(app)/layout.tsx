@@ -11,8 +11,9 @@ const getPageTitle = (pathname: string): string => {
   if (pathname.match(/^\/events\/[^/]+\/edit$/)) return 'Editar Evento';
   if (pathname.startsWith('/events')) return 'Eventos';
   if (pathname.startsWith('/calendar')) return 'Calendário de Eventos';
-  if (pathname.startsWith('/prospects/new')) return 'Cadastrar Novo Lead'; // Added
-  if (pathname.startsWith('/sales-funnel')) return 'Funil de Leads'; // Renamed
+  if (pathname.startsWith('/prospects/new')) return 'Cadastrar Novo Lead';
+  if (pathname.startsWith('/sales-funnel')) return 'Funil de Leads';
+  if (pathname.startsWith('/payments/new')) return 'Adicionar Pagamento'; // Novo título de página
   if (pathname.startsWith('/financials')) return 'Controle Financeiro';
   return 'FestaFlow';
 };

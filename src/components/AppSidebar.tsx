@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, Users, ClipboardList, CircleDollarSign, LayoutDashboard, CalendarPlus, UserPlus } from 'lucide-react'; // Added CalendarPlus, UserPlus
+import { CalendarDays, Users, ClipboardList, CircleDollarSign, LayoutDashboard, CalendarPlus, UserPlus, HandCoins } from 'lucide-react'; // Added HandCoins
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -11,9 +11,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/calendar', label: 'Calendário Eventos', icon: CalendarDays },
-  { href: '/events/new', label: 'Novo Evento', icon: CalendarPlus }, // Changed icon
-  { href: '/prospects/new', label: 'Novo Lead', icon: UserPlus }, // Added Novo Lead
-  { href: '/sales-funnel', label: 'Funil de Leads', icon: ClipboardList }, // Renamed
+  { href: '/events/new', label: 'Novo Evento', icon: CalendarPlus },
+  { href: '/prospects/new', label: 'Novo Lead', icon: UserPlus },
+  { href: '/sales-funnel', label: 'Funil de Leads', icon: ClipboardList },
+  { href: '/payments/new', label: 'Adicionar Pagamento', icon: HandCoins }, // Novo item de menu
   { href: '/financials', label: 'Financeiro', icon: CircleDollarSign },
 ];
 

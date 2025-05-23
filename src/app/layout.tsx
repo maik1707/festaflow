@@ -3,7 +3,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { EventProvider } from '@/contexts/EventContext';
-import { ProspectProvider } from '@/contexts/ProspectContext'; // Import ProspectProvider
+import { ProspectProvider } from '@/contexts/ProspectContext';
+import { PaymentProvider } from '@/contexts/PaymentContext'; // Import PaymentProvider
 
 export const metadata: Metadata = {
   title: 'FestaFlow - Gestão de Eventos',
@@ -19,9 +20,11 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={`antialiased font-sans`}>
         <EventProvider>
-          <ProspectProvider> {/* Wrap with ProspectProvider */}
-            {children}
-            <Toaster />
+          <ProspectProvider>
+            <PaymentProvider> {/* Wrap with PaymentProvider */}
+              {children}
+              <Toaster />
+            </PaymentProvider>
           </ProspectProvider>
         </EventProvider>
       </body>
