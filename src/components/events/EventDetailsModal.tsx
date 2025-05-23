@@ -13,7 +13,7 @@ from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { Event } from "@/lib/types";
 import { useEvents } from "@/contexts/EventContext";
-import { usePayments } from "@/contexts/PaymentContext"; // Para buscar pagamentos
+import { usePayments } from "@/contexts/PaymentContext";
 import type { Payment } from "@/lib/paymentTypes";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -29,7 +29,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Adicionada a importação que faltava
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,23 +44,17 @@ interface EventDetailsModalProps {
 
 export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalProps) {
   const { deleteEvent } = useEvents();
-  const { getPaymentsForEvent, loading: paymentsLoading } = usePayments();
+  const { getPaymentsForEvent, paymentsByEvent, loading: paymentsLoading } = usePayments();
   const { toast } = useToast();
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [eventPayments, setEventPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
-    if (isOpen && event) {
-      const fetchPayments = async () => {
-        const payments = await getPaymentsForEvent(event.id);
-        setEventPayments(payments);
-      };
-      fetchPayments();
-    } else {
-      setEventPayments([]); // Limpa os pagamentos quando o modal fecha ou não há evento
+    if (isOpen && event?.id) {
+      // Garante que os pagamentos para este evento sejam carregados ou atualizados no contexto.
+      getPaymentsForEvent(event.id);
     }
-  }, [isOpen, event, getPaymentsForEvent]);
+  }, [isOpen, event?.id, getPaymentsForEvent]);
 
   if (!event) return null;
 
@@ -69,8 +63,6 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
     setIsDeleting(true);
     try {
       await deleteEvent(event.id);
-      // TODO: O que fazer com os pagamentos associados?
-      // Por enquanto, eles permanecem no banco de dados.
       toast({
         title: "Evento Excluído",
         description: `O evento de ${event.coupleName} foi excluído.`,
@@ -103,6 +95,10 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
   const iconClass = "h-5 w-5 text-primary mt-0.5 shrink-0";
   const amountPaid = event.amountPaid || 0;
   const remainingBalance = event.eventValue - amountPaid;
+  
+  const currentEventPayments = event ? paymentsByEvent[event.id] || [] : [];
+  const showPaymentsSkeleton = paymentsLoading && (!paymentsByEvent[event.id] || paymentsByEvent[event.id]?.length === 0);
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -151,7 +147,7 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
               </div>
             )}
              <div className={detailItemClass}>
-                <Info className={iconClass} /> {/* Placeholder, could be a status icon */}
+                <Info className={iconClass} />
                 <div>
                   <strong>Status:</strong> <span className="px-2 py-1 text-xs font-medium rounded-full bg-accent text-accent-foreground">{event.status}</span>
                 </div>
@@ -182,14 +178,14 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
             <Separator className="my-2"/>
             
             <h4 className="text-md font-semibold text-primary flex items-center gap-2"><ListChecks size={18}/>Histórico de Pagamentos</h4>
-            {paymentsLoading ? (
+            {showPaymentsSkeleton ? (
                 <div className="space-y-2">
                     <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-8 w-full" />
                 </div>
-            ) : eventPayments.length > 0 ? (
+            ) : currentEventPayments.length > 0 ? (
               <ul className="space-y-2 text-sm">
-                {eventPayments.map(p => (
+                {currentEventPayments.map(p => (
                   <li key={p.id} className="p-2 border rounded-md bg-muted/50">
                     <div className="flex justify-between items-center">
                       <span>{format(p.paymentDate, "dd/MM/yyyy", { locale: ptBR })} - R$ {p.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
