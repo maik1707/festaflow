@@ -2,7 +2,7 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Event } from '@/lib/types';
 import { db, isFirebaseConfigured } from '@/lib/firebaseConfig';
 import {
@@ -14,7 +14,8 @@ import {
   getDocs,
   query,
   orderBy,
-  Timestamp
+  Timestamp,
+  serverTimestamp
 } from 'firebase/firestore';
 
 interface EventContextType {
@@ -30,158 +31,119 @@ interface EventContextType {
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
 
-const generateId = () => Math.random().toString(36).substr(2, 9); 
+const generateId = () => Math.random().toString(36).substr(2, 9); // Only for non-Firebase fallback (which we are removing)
 
+// Initial sample data can be used if Firebase is not configured, for UI demonstration.
+// However, for an "official application", operations should fail or be disabled.
 const initialEventsData: Event[] = [
-  {
-    id: generateId(),
-    coupleName: "Ana & Bruno (Exemplo Evento)",
-    eventDate: new Date(new Date().getFullYear(), new Date().getMonth(), 15, 18, 0),
-    location: "Salão Sol e Lua",
-    guestCount: 150,
-    eventValue: 12000,
-    packageName: "Pacote Diamante",
-    extraDetails: "Decoração floral branca e rosa. DJ incluso.",
-    status: "Confirmado", // Default status for example events
-  },
-  {
-    id: generateId(),
-    coupleName: "Carlos & Diana (Exemplo Evento)",
-    eventDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5, 16, 30),
-    location: "Chácara Recanto Verde",
-    guestCount: 80,
-    eventValue: 7500,
-    packageName: "Pacote Ouro",
-    extraDetails: "Cerimônia ao ar livre. Banda ao vivo.",
-    status: "Confirmado", // Default status for example events
-  },
+  // {
+  //   id: generateId(),
+  //   coupleName: "Ana & Bruno (Exemplo Evento)",
+  //   eventDate: new Date(new Date().getFullYear(), new Date().getMonth(), 15, 18, 0),
+  //   location: "Salão Sol e Lua",
+  //   guestCount: 150,
+  //   eventValue: 12000,
+  //   packageName: "Pacote Diamante",
+  //   extraDetails: "Decoração floral branca e rosa. DJ incluso.",
+  //   status: "Confirmado",
+  // },
 ];
 
 export const EventProvider = ({ children }: { children: ReactNode }) => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      if (isFirebaseConfigured()) {
-        try {
-          const eventsCollection = collection(db, "events");
-          const q = query(eventsCollection, orderBy("eventDate", "asc"));
-          const querySnapshot = await getDocs(q);
-          const fetchedEvents = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              ...data,
-              eventDate: (data.eventDate as Timestamp).toDate(),
-            } as Event;
-          });
-          setEvents(fetchedEvents);
-        } catch (error) {
-          console.error("Error fetching events from Firestore: ", error);
-          loadEventsFromLocalStorage();
-        }
-      } else {
-        console.warn("Firebase não configurado para eventos. Usando localStorage.");
-        loadEventsFromLocalStorage();
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    if (isFirebaseConfigured() && db) {
+      try {
+        const eventsCollection = collection(db, "events");
+        const q = query(eventsCollection, orderBy("eventDate", "asc"));
+        const querySnapshot = await getDocs(q);
+        const fetchedEvents = querySnapshot.docs.map(docSnapshot => { // Renamed doc to docSnapshot to avoid conflict
+          const data = docSnapshot.data();
+          return {
+            id: docSnapshot.id,
+            ...data,
+            eventDate: (data.eventDate as Timestamp).toDate(),
+          } as Event;
+        });
+        setEvents(fetchedEvents);
+      } catch (error) {
+        console.error("Error fetching events from Firestore: ", error);
+        setEvents(initialEventsData); // Or set to [] and show an error message in UI
       }
-      setLoading(false);
-    };
-
-    const loadEventsFromLocalStorage = () => {
-      if (typeof window !== 'undefined') {
-        const savedEvents = localStorage.getItem('festaFlowEvents');
-        const parsedEvents = savedEvents ? JSON.parse(savedEvents, (key, value) => {
-          if (key === 'eventDate') return new Date(value);
-          return value;
-        }) : initialEventsData;
-        setEvents(parsedEvents);
-      } else {
-        setEvents(initialEventsData); 
-      }
-    };
-    
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !loading) { 
-        if (!isFirebaseConfigured()) { 
-           localStorage.setItem('festaFlowEvents', JSON.stringify(events));
-        }
+    } else {
+      console.warn("Firebase não configurado para eventos. Os dados não serão carregados ou persistidos no banco de dados.");
+      setEvents(initialEventsData); // Set to empty or sample data if Firebase not configured
     }
-  }, [events, loading]);
+    setLoading(false);
+  }, []);
+  
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
 
   const addEvent = async (newEventData: Omit<Event, 'id' | 'status' | 'eventDate'> & { eventDate: string }): Promise<void> => {
-    const newEventObjectModel: Event = {
+    if (!isFirebaseConfigured() || !db) {
+      console.error("Firebase não configurado. Não é possível adicionar evento.");
+      // Optionally throw an error or notify the user via UI
+      throw new Error("Firebase não configurado. Operação de adicionar evento falhou.");
+    }
+
+    const newEventObjectModel: Omit<Event, 'id'> = { // Firestore will generate ID
       ...newEventData,
-      id: generateId(), 
-      status: 'Confirmado', // Default status for a new event is now 'Confirmado'
+      status: 'Confirmado',
       eventDate: new Date(newEventData.eventDate),
       guestCount: Number(newEventData.guestCount),
       eventValue: Number(newEventData.eventValue),
+      extraDetails: newEventData.extraDetails || "",
     };
 
-    if (isFirebaseConfigured()) {
-      try {
-        const docRef = await addDoc(collection(db, "events"), {
-          coupleName: newEventObjectModel.coupleName,
-          eventDate: Timestamp.fromDate(newEventObjectModel.eventDate),
-          location: newEventObjectModel.location,
-          guestCount: newEventObjectModel.guestCount,
-          eventValue: newEventObjectModel.eventValue,
-          packageName: newEventObjectModel.packageName,
-          extraDetails: newEventObjectModel.extraDetails || "",
-          status: newEventObjectModel.status,
-        });
-        setEvents(prevEvents => [...prevEvents, {...newEventObjectModel, id: docRef.id}]);
-      } catch (e) {
-        console.error("Error adding document to Firestore: ", e);
-        throw e; 
-      }
-    } else {
-      setEvents(prevEvents => [...prevEvents, newEventObjectModel]);
+    try {
+      // Firestore data should not include 'id' when adding, as Firestore generates it.
+      const docRef = await addDoc(collection(db, "events"), {
+        coupleName: newEventObjectModel.coupleName,
+        eventDate: Timestamp.fromDate(newEventObjectModel.eventDate),
+        location: newEventObjectModel.location,
+        guestCount: newEventObjectModel.guestCount,
+        eventValue: newEventObjectModel.eventValue,
+        packageName: newEventObjectModel.packageName,
+        extraDetails: newEventObjectModel.extraDetails,
+        status: newEventObjectModel.status,
+        // createdAt: serverTimestamp(), // Optional: if you want to track creation time
+      });
+      // Add to local state with the ID from Firestore
+      setEvents(prevEvents => [...prevEvents, {...newEventObjectModel, id: docRef.id}].sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime()));
+    } catch (e) {
+      console.error("Error adding document to Firestore: ", e);
+      throw e; 
     }
   };
 
   const updateEvent = async (id: string, updates: Partial<Omit<Event, 'id' | 'eventDate'> & { eventDate?: string }>): Promise<void> => {
-    if (isFirebaseConfigured()) {
-      try {
-        const eventDocRef = doc(db, "events", id);
-        const firestoreUpdates: any = { ...updates };
-        if (updates.eventDate) {
-          firestoreUpdates.eventDate = Timestamp.fromDate(new Date(updates.eventDate));
-        }
-        if (updates.guestCount !== undefined) {
-           firestoreUpdates.guestCount = Number(updates.guestCount);
-        }
-        if (updates.eventValue !== undefined) {
-           firestoreUpdates.eventValue = Number(updates.eventValue);
-        }
-        if ('id' in firestoreUpdates) {
-            delete firestoreUpdates.id;
-        }
+    if (!isFirebaseConfigured() || !db) {
+      console.error("Firebase não configurado. Não é possível atualizar evento.");
+      throw new Error("Firebase não configurado. Operação de atualizar evento falhou.");
+    }
 
-        await updateDoc(eventDocRef, firestoreUpdates);
-        
-        setEvents(prevEvents =>
-          prevEvents.map(event => {
-            if (event.id === id) {
-              const updatedEvent = { ...event, ...updates };
-              if (updates.eventDate) updatedEvent.eventDate = new Date(updates.eventDate);
-              if (updates.guestCount !== undefined) updatedEvent.guestCount = Number(updates.guestCount);
-              if (updates.eventValue !== undefined) updatedEvent.eventValue = Number(updates.eventValue);
-              return updatedEvent;
-            }
-            return event;
-          })
-        );
-      } catch (e) {
-        console.error("Error updating document in Firestore: ", e);
-        throw e;
+    try {
+      const eventDocRef = doc(db, "events", id);
+      const firestoreUpdates: any = { ...updates };
+      if (updates.eventDate) {
+        firestoreUpdates.eventDate = Timestamp.fromDate(new Date(updates.eventDate));
       }
-    } else {
+      if (updates.guestCount !== undefined) {
+         firestoreUpdates.guestCount = Number(updates.guestCount);
+      }
+      if (updates.eventValue !== undefined) {
+         firestoreUpdates.eventValue = Number(updates.eventValue);
+      }
+      // firestoreUpdates.updatedAt = serverTimestamp(); // Optional: track update time
+
+      await updateDoc(eventDocRef, firestoreUpdates);
+      
       setEvents(prevEvents =>
         prevEvents.map(event => {
           if (event.id === id) {
@@ -192,23 +154,26 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
             return updatedEvent;
           }
           return event;
-        })
+        }).sort((a,b) => a.eventDate.getTime() - b.eventDate.getTime())
       );
+    } catch (e) {
+      console.error("Error updating document in Firestore: ", e);
+      throw e;
     }
   };
 
   const deleteEvent = async (id: string): Promise<void> => {
-    if (isFirebaseConfigured()) {
-      try {
-        const eventDocRef = doc(db, "events", id);
-        await deleteDoc(eventDocRef);
-        setEvents(prevEvents => prevEvents.filter(event => event.id !== id));
-      } catch (e) {
-        console.error("Error deleting document from Firestore: ", e);
-        throw e;
-      }
-    } else {
+     if (!isFirebaseConfigured() || !db) {
+      console.error("Firebase não configurado. Não é possível excluir evento.");
+      throw new Error("Firebase não configurado. Operação de excluir evento falhou.");
+    }
+    try {
+      const eventDocRef = doc(db, "events", id);
+      await deleteDoc(eventDocRef);
       setEvents(prevEvents => prevEvents.filter(event => event.id !== id));
+    } catch (e) {
+      console.error("Error deleting document from Firestore: ", e);
+      throw e;
     }
   };
 
