@@ -41,7 +41,7 @@ const prospectFormSchema = z.object({
 type ProspectFormValues = z.infer<typeof prospectFormSchema>;
 
 interface ProspectFormProps {
-  prospect?: Prospect; // Optional: for editing existing prospect
+  prospect?: Prospect; 
 }
 
 export function ProspectForm({ prospect }: ProspectFormProps) {
@@ -80,13 +80,17 @@ export function ProspectForm({ prospect }: ProspectFormProps) {
           title: "Lead Cadastrado!",
           description: `O lead ${data.contactName} foi cadastrado com sucesso.`,
         });
-        router.push("/sales-funnel"); // Navigate to funnel or prospect details if available
+        router.push("/sales-funnel"); 
       }
     } catch (error) {
+      let errorMessage = "Não foi possível salvar o lead. Tente novamente.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       console.error("Falha ao salvar lead:", error);
       toast({
         title: "Erro ao Salvar",
-        description: "Não foi possível salvar o lead. Tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

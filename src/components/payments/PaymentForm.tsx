@@ -62,13 +62,16 @@ export function PaymentForm() {
         title: "Pagamento Adicionado!",
         description: `Pagamento de R$ ${data.amount.toFixed(2)} registrado com sucesso.`,
       });
-      // router.push("/financials"); // Ou para a página do evento, ou limpar o formulário
-      form.reset(); // Limpa o formulário após o sucesso
+      form.reset(); 
     } catch (error) {
+      let errorMessage = "Não foi possível registrar o pagamento. Tente novamente.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       console.error("Falha ao adicionar pagamento:", error);
       toast({
         title: "Erro ao Adicionar Pagamento",
-        description: "Não foi possível registrar o pagamento. Tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

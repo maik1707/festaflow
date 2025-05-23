@@ -49,14 +49,13 @@ const eventFormSchema = z.object({
     message: "O nome do pacote deve ter pelo menos 2 caracteres.",
   }),
   extraDetails: z.string().optional(),
-  // amountPaid não é editável aqui, mas precisa estar no schema se for parte do defaultValues
   amountPaid: z.number().optional(), 
 });
 
 type EventFormValues = z.infer<typeof eventFormSchema>;
 
 interface EventFormProps {
-  event?: Event; // Optional: for editing existing event
+  event?: Event; 
 }
 
 export function EventForm({ event }: EventFormProps) {
@@ -70,7 +69,7 @@ export function EventForm({ event }: EventFormProps) {
         ...event, 
         guestCount: Number(event.guestCount), 
         eventValue: Number(event.eventValue),
-        amountPaid: Number(event.amountPaid || 0) // Garante que seja número
+        amountPaid: Number(event.amountPaid || 0) 
       } 
     : {
         coupleName: "",
@@ -88,8 +87,6 @@ export function EventForm({ event }: EventFormProps) {
     defaultValues,
   });
   
-  // Se for um evento existente, atualiza o valor de amountPaid no formulário
-  // caso ele mude no contexto (ex: após um novo pagamento ser adicionado).
   useEffect(() => {
     if (event) {
       form.setValue('amountPaid', Number(event.amountPaid || 0));
@@ -99,9 +96,6 @@ export function EventForm({ event }: EventFormProps) {
 
   async function onSubmit(data: EventFormValues) {
     setIsSubmitting(true);
-    // Não incluímos amountPaid nos dados a serem enviados para addEvent/updateEvent via formulário,
-    // pois ele é gerenciado pelo PaymentContext.
-    // No entanto, a função updateEvent no EventContext PODE receber amountPaid.
     const { amountPaid, ...eventDataToSubmit } = data;
     
     const formattedData = {
@@ -111,15 +105,12 @@ export function EventForm({ event }: EventFormProps) {
 
     try {
       if (event) {
-        // Ao atualizar, não passamos amountPaid diretamente do formulário.
-        // Ele é atualizado via PaymentContext -> EventContext.updateEvent
         await updateEvent(event.id, formattedData);
         toast({
           title: "Evento Atualizado!",
           description: `O evento de ${data.coupleName} foi atualizado com sucesso.`,
         });
       } else {
-        // addEvent no EventContext já inicializa amountPaid como 0.
         await addEvent(formattedData);
         toast({
           title: "Evento Cadastrado!",
@@ -128,10 +119,14 @@ export function EventForm({ event }: EventFormProps) {
       }
       router.push("/calendar"); 
     } catch (error) {
+      let errorMessage = "Não foi possível salvar o evento. Tente novamente.";
+      if (error instanceof Error) {
+        errorMessage = error.message; 
+      }
       console.error("Failed to save event:", error);
       toast({
         title: "Erro ao Salvar",
-        description: "Não foi possível salvar o evento. Tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -242,7 +237,6 @@ export function EventForm({ event }: EventFormProps) {
                     </AlertDescription>
                 </Alert>
             )}
-
 
             <FormField
               control={form.control}
