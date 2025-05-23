@@ -29,7 +29,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"; // Removido AlertDialogTrigger não utilizado
+  AlertDialogTrigger, // Adicionada a importação que faltava
+} from "@/components/ui/alert-dialog";
 import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -77,10 +78,14 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
       });
       onClose();
     } catch (error) {
+      let errorMessage = "Não foi possível excluir o evento. Tente novamente.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       console.error("Failed to delete event:", error);
       toast({
         title: "Erro ao Excluir",
-        description: "Não foi possível excluir o evento. Tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
