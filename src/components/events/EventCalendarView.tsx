@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -9,7 +10,7 @@ import { EventDetailsModal } from './EventDetailsModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '../ui/button';
-import { List, Users, CalendarDays, MapPin, Edit, Trash2, PlusCircle } from 'lucide-react';
+import { List, Users, CalendarDays, MapPin, Edit, Trash2, PlusCircle, CheckCircle2 } from 'lucide-react'; // Added CheckCircle2
 import { useRouter } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -40,8 +41,8 @@ export function EventCalendarView() {
   const [isDeleting, setIsDeleting] = useState(false);
 
 
-  const monthlyEvents = useMemo(() => getEventsByMonth(currentMonth), [currentMonth, getEventsByMonth, events]); // Added events dependency
-  const dailyEvents = useMemo(() => selectedDate ? getEventsByDate(selectedDate) : [], [selectedDate, getEventsByDate, events]); // Added events dependency
+  const monthlyEvents = useMemo(() => getEventsByMonth(currentMonth), [currentMonth, getEventsByMonth, events]);
+  const dailyEvents = useMemo(() => selectedDate ? getEventsByDate(selectedDate) : [], [selectedDate, getEventsByDate, events]);
 
   const eventDates = useMemo(() => events.map(event => event.eventDate), [events]);
 
@@ -105,15 +106,17 @@ export function EventCalendarView() {
                 <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleEditEvent(event.id); }}>
                     <Edit size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Editar</span>
                 </Button>
-                <Button variant="destructive" size="sm" onClick={(e) => {e.stopPropagation(); confirmDeleteEvent(event.id, event.coupleName)}}>
-                    <Trash2 size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Excluir</span>
-                </Button>
+                 <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" onClick={(e) => {e.stopPropagation(); confirmDeleteEvent(event.id, event.coupleName)}}>
+                        <Trash2 size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Excluir</span>
+                    </Button>
+                </AlertDialogTrigger>
             </div>
         </div>
     </Card>
   );
 
-  if (loading && events.length === 0) { // Show skeleton only on initial load and if no events yet
+  if (loading && events.length === 0) {
     return (
       <div className="grid lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-xl">
@@ -165,12 +168,12 @@ export function EventCalendarView() {
               footer={
                 selectedDate && dailyEvents.length > 0 ? (
                   <p className="p-4 text-sm text-center">
-                    {dailyEvents.length} evento(s) em {format(selectedDate, "PPP", { locale: ptBR })}.
+                    {dailyEvents.length} evento(s) agendado(s) em {format(selectedDate, "PPP", { locale: ptBR })}.
                   </p>
                 ) : selectedDate ? (
-                  <p className="p-4 text-sm text-center">Nenhum evento em {format(selectedDate, "PPP", { locale: ptBR })}.</p>
+                  <p className="p-4 text-sm text-center text-green-600 font-medium">Data disponível em {format(selectedDate, "PPP", { locale: ptBR })}.</p>
                 ) : (
-                  <p className="p-4 text-sm text-center">Selecione um dia para ver os eventos.</p>
+                  <p className="p-4 text-sm text-center">Selecione um dia para verificar os eventos.</p>
                 )
               }
             />
@@ -203,14 +206,23 @@ export function EventCalendarView() {
           {selectedDate && (
             <Card className="shadow-xl">
             <CardHeader>
-                <CardTitle className="text-xl">Eventos em {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}</CardTitle>
+                <CardTitle className="text-xl">
+                    {dailyEvents.length > 0 
+                        ? `Eventos Agendados para ${format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}`
+                        : `Disponibilidade em ${format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}`
+                    }
+                </CardTitle>
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-[200px] pr-3">
                 {dailyEvents.length > 0 ? (
                     dailyEvents.map(event => <EventItem key={event.id} event={event} />)
                 ) : (
-                    <p className="text-muted-foreground">Nenhum evento para esta data.</p>
+                    <div className="flex flex-col items-center justify-center h-full text-center py-4">
+                        <CheckCircle2 size={48} className="text-green-500 mb-3" />
+                        <p className="text-lg font-semibold text-green-600">Data Disponível!</p>
+                        <p className="text-muted-foreground">Nenhum evento agendado para esta data.</p>
+                    </div>
                 )}
                 </ScrollArea>
             </CardContent>
@@ -225,24 +237,23 @@ export function EventCalendarView() {
           onClose={() => setIsModalOpen(false)}
         />
       </div>
-      {eventToDelete && (
-        <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação não pode ser desfeita. Isso excluirá permanentemente o evento de {eventToDelete.name}.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setEventToDelete(null)} disabled={isDeleting}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={executeDeleteEvent} disabled={isDeleting}>
-                {isDeleting ? "Excluindo..." : "Excluir"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o evento de {eventToDelete?.name}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setEventToDelete(null)} disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={executeDeleteEvent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+              {isDeleting ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
+
