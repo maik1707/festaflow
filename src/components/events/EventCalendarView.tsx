@@ -10,7 +10,7 @@ import { EventDetailsModal } from './EventDetailsModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '../ui/button';
-import { List, Users, CalendarDays, MapPin, Edit, Trash2, PlusCircle, CheckCircle2 } from 'lucide-react'; // Added CheckCircle2
+import { List, Users, CalendarDays, MapPin, Edit, Trash2, PlusCircle, CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -22,7 +22,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  // AlertDialogTrigger, // Não é mais necessário aqui para cada item se controlado programaticamente
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -106,11 +106,10 @@ export function EventCalendarView() {
                 <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleEditEvent(event.id); }}>
                     <Edit size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Editar</span>
                 </Button>
-                 <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" onClick={(e) => {e.stopPropagation(); confirmDeleteEvent(event.id, event.coupleName)}}>
-                        <Trash2 size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Excluir</span>
-                    </Button>
-                </AlertDialogTrigger>
+                {/* AlertDialogTrigger removido daqui. O botão agora só chama confirmDeleteEvent */}
+                <Button variant="destructive" size="sm" onClick={(e) => {e.stopPropagation(); confirmDeleteEvent(event.id, event.coupleName)}}>
+                    <Trash2 size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Excluir</span>
+                </Button>
             </div>
         </div>
     </Card>
@@ -151,7 +150,7 @@ export function EventCalendarView() {
               className="rounded-md border p-0"
               locale={ptBR}
               modifiers={{
-                eventDay: eventDates,
+                eventDay: eventDates.map(dateStr => new Date(dateStr)), // Garante que são objetos Date
               }}
               modifiersStyles={{
                 eventDay: {
@@ -237,7 +236,7 @@ export function EventCalendarView() {
           onClose={() => setIsModalOpen(false)}
         />
       </div>
-      <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
+      <AlertDialog open={!!eventToDelete} onOpenChange={(open) => !open && setEventToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
