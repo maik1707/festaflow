@@ -3,10 +3,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, Users, ClipboardList, CircleDollarSign, LayoutDashboard, CalendarPlus, UserPlus, HandCoins } from 'lucide-react'; // Added HandCoins
+import { CalendarDays, ClipboardList, CircleDollarSign, LayoutDashboard, CalendarPlus, UserPlus, HandCoins, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { logoutAction } from '@/app/login/actions'; // Importar a ação de logout
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,12 +15,16 @@ const navItems = [
   { href: '/events/new', label: 'Novo Evento', icon: CalendarPlus },
   { href: '/prospects/new', label: 'Novo Lead', icon: UserPlus },
   { href: '/sales-funnel', label: 'Funil de Leads', icon: ClipboardList },
-  { href: '/payments/new', label: 'Adicionar Pagamento', icon: HandCoins }, // Novo item de menu
+  { href: '/payments/new', label: 'Adicionar Pagamento', icon: HandCoins },
   { href: '/financials', label: 'Financeiro', icon: CircleDollarSign },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
+
+  const handleLogout = async () => {
+    await logoutAction();
+  };
 
   return (
     <aside className="sticky top-0 h-screen w-64 bg-sidebar text-sidebar-foreground p-4 flex flex-col shadow-lg">
@@ -65,26 +70,27 @@ export function AppSidebar() {
           ))}
         </ul>
       </nav>
-      {/* <div className="mt-auto">
+      <div className="mt-auto">
         <TooltipProvider delayDuration={100}>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        className="w-full justify-start text-base hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground"
-                    >
-                        <Link href="/settings" className="flex items-center gap-3">
-                        <Settings className="h-5 w-5" />
-                        Configurações
-                        </Link>
-                    </Button>
+                    <form action={handleLogout} className="w-full">
+                        <Button
+                            type="submit"
+                            variant="ghost"
+                            className="w-full justify-start text-base hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground"
+                        >
+                            <LogOut className="h-5 w-5 mr-3" />
+                            Sair
+                        </Button>
+                    </form>
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                    <p>Configurações</p>
+                    <p>Sair do Sistema</p>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
-      </div> */}
+      </div>
     </aside>
   );
 }

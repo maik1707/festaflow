@@ -1,9 +1,15 @@
 
 import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/session';
 
-export default function HomePage() {
-  redirect('/dashboard');
+export default async function HomePage() {
+  const session = await getSession();
+
+  if (session) {
+    redirect('/dashboard');
+  } else {
+    redirect('/login');
+  }
   // Nenhuma renderização é necessária aqui, pois o redirect() interrompe a execução.
-  // No entanto, para satisfazer o tipo de retorno do React, podemos retornar null.
   return null;
 }
