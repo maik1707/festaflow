@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, ClipboardList, CircleDollarSign, LayoutDashboard, CalendarPlus, UserPlus, HandCoins, LogOut } from 'lucide-react';
+import { CalendarDays, ClipboardList, CircleDollarSign, LayoutDashboard, CalendarPlus, UserPlus, HandCoins, LogOut, StickyNote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/sales-funnel', label: 'Funil de Leads', icon: ClipboardList },
   { href: '/payments/new', label: 'Adicionar Pagamento', icon: HandCoins },
   { href: '/financials', label: 'Financeiro', icon: CircleDollarSign },
+  { href: '/appointments', label: 'Compromissos', icon: StickyNote },
 ];
 
 export function AppSidebar() {

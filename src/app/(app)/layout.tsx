@@ -18,6 +18,7 @@ const getPageTitle = (pathname: string): string => {
   if (pathname.startsWith('/sales-funnel')) return 'Funil de Leads';
   if (pathname.startsWith('/payments/new')) return 'Adicionar Pagamento';
   if (pathname.startsWith('/financials')) return 'Controle Financeiro';
+  if (pathname.startsWith('/appointments')) return 'Compromissos'; // Novo título
   return 'FestaFlow'; // Default title
 };
 
