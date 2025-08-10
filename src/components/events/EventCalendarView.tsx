@@ -22,7 +22,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  // AlertDialogTrigger, // Não é mais necessário aqui para cada item se controlado programaticamente
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -106,7 +105,6 @@ export function EventCalendarView() {
                 <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleEditEvent(event.id); }}>
                     <Edit size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Editar</span>
                 </Button>
-                {/* AlertDialogTrigger removido daqui. O botão agora só chama confirmDeleteEvent */}
                 <Button variant="destructive" size="sm" onClick={(e) => {e.stopPropagation(); confirmDeleteEvent(event.id, event.coupleName)}}>
                     <Trash2 size={14} className="mr-1 sm:mr-2"/> <span className="hidden sm:inline">Excluir</span>
                 </Button>
@@ -150,7 +148,7 @@ export function EventCalendarView() {
               className="rounded-md border p-0"
               locale={ptBR}
               modifiers={{
-                eventDay: eventDates.map(dateStr => new Date(dateStr)), // Garante que são objetos Date
+                eventDay: eventDates.map(date => new Date(date)),
               }}
               modifiersStyles={{
                 eventDay: {
@@ -255,4 +253,3 @@ export function EventCalendarView() {
     </>
   );
 }
-

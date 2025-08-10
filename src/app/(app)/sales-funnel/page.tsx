@@ -41,14 +41,14 @@ export default function SalesFunnelPage() {
     <div className="flex flex-col h-full">
       <Card className="mb-6 shadow-md">
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <CardTitle className="text-2xl">Funil de Leads</CardTitle>
               <CardDescription>
                 Gerencie seus leads desde o primeiro contato até o fechamento.
               </CardDescription>
             </div>
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto">
               <Link href="/prospects/new">
                 <PlusCircle className="mr-2 h-5 w-5" /> Adicionar Novo Lead
               </Link>
