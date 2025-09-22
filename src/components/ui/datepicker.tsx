@@ -13,6 +13,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { FormControl } from "@/components/ui/form";
+
 
 interface DatePickerProps {
   date: Date | undefined;
@@ -23,7 +25,7 @@ interface DatePickerProps {
 export function DatePicker({ date, setDate, disabled }: DatePickerProps) {
   return (
     <Popover>
-      <PopoverTrigger asChild>
+      <PopoverTrigger>
         <Button
           variant={"outline"}
           className={cn(
@@ -32,7 +34,7 @@ export function DatePicker({ date, setDate, disabled }: DatePickerProps) {
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP 'às' HH:mm", { locale: ptBR }) : <span>Escolha uma data</span>}
+          {date ? format(date, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
