@@ -14,7 +14,7 @@ export default function SettingsPage() {
     async function checkConnectionStatus() {
       setIsLoading(true);
       try {
-        // Chama a nova rota de API em vez de a função diretamente
+        // Chama a rota de API para verificar o status
         const response = await fetch('/api/auth/status');
         const data = await response.json();
         setIsConnected(data.isConnected);
