@@ -228,7 +228,9 @@ export function EventForm({ event }: EventFormProps) {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Data do Evento</FormLabel>
-                     <DatePicker date={field.value} setDate={field.onChange} />
+                    <FormControl>
+                      <DatePicker date={field.value} setDate={field.onChange} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
