@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
-import { getStoredTokens } from '@/lib/google'; // Precisaremos criar essa função
+// REMOVIDO: import { getStoredTokens } from '@/lib/google';
 
 export default function SettingsPage() {
   const [isConnecting, setIsConnecting] = useState(false);
@@ -14,9 +13,12 @@ export default function SettingsPage() {
 
   useEffect(() => {
     async function checkConnectionStatus() {
+      setIsLoading(true);
       try {
-        const tokens = await getStoredTokens();
-        setIsConnected(!!tokens && !!tokens.refresh_token);
+        // Chama a nova rota de API em vez de a função diretamente
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        setIsConnected(data.isConnected);
       } catch (error) {
         console.error("Erro ao verificar status de conexão com o Google:", error);
         setIsConnected(false);
