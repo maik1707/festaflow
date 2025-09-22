@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
-// REMOVIDO: import { getStoredTokens } from '@/lib/google';
 
 export default function SettingsPage() {
   const [isConnecting, setIsConnecting] = useState(false);
