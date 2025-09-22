@@ -1,6 +1,3 @@
-
-'use server';
-
 import { google } from 'googleapis';
 import { db } from '@/lib/firebaseConfig';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
