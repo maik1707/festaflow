@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -229,7 +228,7 @@ export function EventForm({ event }: EventFormProps) {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Data do Evento</FormLabel>
-                    <DatePicker date={field.value} setDate={field.onChange} />
+                     <DatePicker date={field.value} setDate={field.onChange} />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -354,5 +353,3 @@ export function EventForm({ event }: EventFormProps) {
     </Card>
   );
 }
-
-    
