@@ -3,12 +3,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, ClipboardList, CircleDollarSign, LayoutDashboard, CalendarPlus, UserPlus, HandCoins, LogOut, StickyNote } from 'lucide-react';
+import { CalendarDays, ClipboardList, CircleDollarSign, LayoutDashboard, CalendarPlus, UserPlus, HandCoins, LogOut, StickyNote, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { logoutAction } from '@/app/login/actions'; 
-import { Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
+import { Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarSeparator } from '@/components/ui/sidebar';
 
 
 const navItems = [
@@ -21,6 +21,10 @@ const navItems = [
   { href: '/financials', label: 'Financeiro', icon: CircleDollarSign },
   { href: '/appointments', label: 'Compromissos', icon: StickyNote },
 ];
+
+const secondaryNavItems = [
+    { href: '/settings', label: 'Configurações', icon: Settings },
+]
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -41,8 +45,9 @@ export function AppSidebar() {
             <SidebarMenu>
                 {navItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
-                        <Link href={item.href}>
+                        <Link href={item.href} legacyBehavior passHref>
                              <SidebarMenuButton
+                                asChild
                                 isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
                                 tooltip={{children: item.label}}
                             >
@@ -55,6 +60,23 @@ export function AppSidebar() {
             </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
+            <SidebarMenu>
+                 {secondaryNavItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                        <Link href={item.href} legacyBehavior passHref>
+                             <SidebarMenuButton
+                                asChild
+                                isActive={pathname.startsWith(item.href)}
+                                tooltip={{children: item.label}}
+                            >
+                                <item.icon />
+                                <span>{item.label}</span>
+                            </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                ))}
+            </SidebarMenu>
+            <SidebarSeparator />
             <form action={logoutAction} className="w-full">
                 <SidebarMenu>
                     <SidebarMenuItem>
